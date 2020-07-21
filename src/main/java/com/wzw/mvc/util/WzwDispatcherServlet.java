@@ -54,7 +54,7 @@ public class WzwDispatcherServlet extends HttpServlet {
         // 5 构造一个HandlerMapping处理器映射器，将配置好的url和Method建立映射关系
         initHandlerMapping();
 
-        System.out.println("lagou mvc 初始化完成....");
+        System.out.println("mvc 初始化完成....");
 
         // 等待请求进入，处理请求
     }
@@ -91,7 +91,6 @@ public class WzwDispatcherServlet extends HttpServlet {
             for (int i = 0; i < methods.length; i++) {
                 Method method = methods[i];
 
-                //  方法没有标识LagouRequestMapping，就不处理
                 if (!method.isAnnotationPresent(WzwRequestMapping.class)) {
                     continue;
                 }
@@ -242,7 +241,6 @@ public class WzwDispatcherServlet extends HttpServlet {
 
 
     // 扫描类
-    // scanPackage: com.lagou.demo  package---->  磁盘上的文件夹（File）  com/lagou/demo
     private void doScan(String scanPackage) {
         String scanPackagePath = Thread.currentThread().getContextClassLoader().getResource("").getPath() + scanPackage.replaceAll("\\.", "/");
         File pack = new File(scanPackagePath);
