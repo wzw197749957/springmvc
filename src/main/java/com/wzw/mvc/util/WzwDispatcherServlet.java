@@ -1,9 +1,9 @@
 package com.wzw.mvc.util;
 
-import com.wzw.mvc.anno.WzwAutowired;
-import com.wzw.mvc.anno.WzwController;
-import com.wzw.mvc.anno.WzwRequestMapping;
-import com.wzw.mvc.anno.WzwService;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.wzw.mvc.anno.*;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.ServletConfig;
@@ -23,9 +23,13 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WzwDispatcherServlet extends HttpServlet {
+    private static final String URL_PREFIX = "/springmvc";
+
     private Properties properties = new Properties();
 
     private List<String> classNames = new ArrayList<>(); // 缓存扫描到的类的全限定类名
+
+    private Map<String, List<String>> AUTHORIZED_MAP = Maps.newHashMap();
 
     // ioc容器
     private Map<String, Object> ioc = new HashMap<String, Object>();
@@ -82,7 +86,13 @@ public class WzwDispatcherServlet extends HttpServlet {
             String baseUrl = "";
             if (aClass.isAnnotationPresent(WzwRequestMapping.class)) {
                 WzwRequestMapping annotation = aClass.getAnnotation(WzwRequestMapping.class);
-                baseUrl = annotation.value(); // 等同于/demo
+                baseUrl = URL_PREFIX + annotation.value(); // 等同于/demo
+            }
+            WzwSecurity classSecurityAnno = aClass.getAnnotation(WzwSecurity.class);
+            if (null != classSecurityAnno
+                    && CollectionUtils.isNotEmpty(Lists.newArrayList(classSecurityAnno.value()))
+                    && !AUTHORIZED_MAP.containsKey(baseUrl)) {
+                AUTHORIZED_MAP.put(baseUrl, Lists.newArrayList(classSecurityAnno.value()));
             }
 
 
@@ -95,10 +105,23 @@ public class WzwDispatcherServlet extends HttpServlet {
                     continue;
                 }
 
-                // 如果标识，就处理
+                // 如果标识，就处理,针对方法与类不同的url配置对应的访问权限
                 WzwRequestMapping annotation = method.getAnnotation(WzwRequestMapping.class);
+                WzwSecurity securityMethodAnno = method.getAnnotation(WzwSecurity.class);
                 String methodUrl = annotation.value();  // /query
-                String url = baseUrl + methodUrl;    // 计算出来的url /demo/query
+                String url = "";
+                if (StringUtils.isBlank(baseUrl)) {
+                    url = URL_PREFIX + methodUrl;    // 计算出来的url /demo/query
+                    if (CollectionUtils.isNotEmpty(Lists.newArrayList(securityMethodAnno.value()))) {
+                        AUTHORIZED_MAP.put(url, Lists.newArrayList(securityMethodAnno.value()));
+                    }
+                } else {
+                    url = baseUrl + methodUrl; // 计算出来的url /demo/query
+                    if (CollectionUtils.isNotEmpty(Lists.newArrayList(securityMethodAnno.value()))) {
+                        AUTHORIZED_MAP.put(url, Lists.newArrayList(securityMethodAnno.value()));
+                    }
+                }
+
 
                 // 把method所有信息及url封装为一个Handler
                 Handler handler = new Handler(entry.getValue(), method, Pattern.compile(url));
@@ -336,6 +359,13 @@ public class WzwDispatcherServlet extends HttpServlet {
         int responseIndex = handler.getParamIndexMapping().get(HttpServletResponse.class.getSimpleName()); // 1
         paraValues[responseIndex] = resp;
 
+        if (AUTHORIZED_MAP.containsKey(req.getRequestURI())) {
+            List<String> securityList = AUTHORIZED_MAP.get(req.getRequestURI());
+            if (!securityList.contains(paraValues[2])) {
+                resp.getWriter().write("401 no authorized");
+                return;
+            }
+        }
 
         // 最终调用handler的method属性
         try {
