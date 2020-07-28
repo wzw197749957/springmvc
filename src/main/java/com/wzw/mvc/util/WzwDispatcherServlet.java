@@ -23,6 +23,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WzwDispatcherServlet extends HttpServlet {
+    private Integer count = 0;
+
     private static final String URL_PREFIX = "/springmvc";
 
     private Properties properties = new Properties();
@@ -366,6 +368,7 @@ public class WzwDispatcherServlet extends HttpServlet {
                 return;
             }
         }
+
 
         // 最终调用handler的method属性
         try {
