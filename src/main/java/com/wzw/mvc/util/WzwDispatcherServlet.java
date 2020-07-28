@@ -23,7 +23,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WzwDispatcherServlet extends HttpServlet {
-    private Integer count = 0;
 
     private static final String URL_PREFIX = "/springmvc";
 
